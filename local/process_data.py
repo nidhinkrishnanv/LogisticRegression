@@ -7,6 +7,7 @@ import re
 import codecs
 import pickle
 import json
+import numpy as np
 
 from options import Options
 
@@ -38,11 +39,13 @@ if not os.path.isdir('data/'+DATA_SIZE):
 
 def readFile(path, dset_type):
     # print("processing "+ dset_type + " data...")
-    labels_map = {}
-    vocab = {}
+    labels_map = get_labels_map()
+    vocab = get_vocab()
     word_count = get_word_count('train')
     with codecs.open(path+DATA_SIZE+'_' + dset_type + '.txt', encoding='unicode_escape', errors='ignore') as f:
         data = []
+        data_list = []
+        label_list = []
         count=0
         for line in f:
 
@@ -51,7 +54,7 @@ def readFile(path, dset_type):
                 count += 1
                 continue
 
-            if count >= 100 and opt.DEBUG:
+            if count >= 1000 and opt.DEBUG:
                 break
 
             sents = line.split("\t")
@@ -67,35 +70,54 @@ def readFile(path, dset_type):
             # sentence[-2] = sentence[-2].strip("\"@en")
             sentence = re.split("\W+", sentences[2])
 
-            tokens = [token.lower() for token in sentence if token not in stopWords]
+            tokens = [token.lower() for token in sentence if token not in stopWords and token in vocab]
             # tokens = [token for token in word_tokenize(sentences[2]) if token not in stopWords]
 
             # vocab[dset_type].update(tokens)
 
             # Add label data pair to data.
-            data += [(labels, tokens)]
+            data.append((tokens, labels))
 
-            if dset_type == 'train':
-                            # Add labels to labels_map
-                for label in labels:
-                    if label not in labels_map:
-                        labels_map[label] = len(labels_map)
+            # data_list.append(tokens_to_vec(vocab, tokens))
+            # label_list.append(label_to_vec(labels_map, labels))
+
+
+            # if dset_type == 'train':
+            #     # Add labels to labels_map
+            #     for label in labels:
+            #         if label not in labels_map:
+            #             labels_map[label] = len(labels_map)
                         
-                add_to_vocab(vocab, tokens, word_count)
+            #     add_to_vocab(vocab, tokens, word_count)
 
             count += 1
         return data, vocab, labels_map
 
 
+def tokens_to_vec(vocab, tokens):
+    token_vec = np.zeros(len(vocab))
+    for word in tokens:
+        if word in vocab:
+            token_vec[vocab[word]] += 1
+    return token_vec
+    
+def label_to_vec(label_map, labels):
+    label_vec = np.zeros(len(label_map))
+    for label in labels:
+        label_vec[label_map[label]] = 1
+    return label_vec
+
 def add_to_vocab(vocab, tokens, word_count):
     for token in tokens:
-        if token not in vocab and token in word_count:
+        if token not in vocab:
             vocab[token] = len(vocab)
 
 
 def create_vocab(path, dset_type):
     # print("processing "+ dset_type + " data...")
     word_count = {}
+    labels_map = {}
+    vocab = {}
     with codecs.open(path+DATA_SIZE+'_' + dset_type + '.txt', encoding='unicode_escape', errors='ignore') as f:
         data = []
         count=0
@@ -122,24 +144,43 @@ def create_vocab(path, dset_type):
             tokens = [token.lower() for token in sentence if token not in stopWords]
             # tokens = [token for token in word_tokenize(sentences[2]) if token not in stopWords]
 
-            add_to_word_count(word_count, tokens)
-
             count += 1
 
-        print("Length of vocab before removing words less than {} : {}".format(opt.min_word_count, len(word_count)))
+            for label in labels:
+                if label not in labels_map:
+                    labels_map[label] = len(labels_map)
+                        
+            add_to_word_count(word_count, tokens)
 
-        for word in list(word_count):
-            if word_count[word] < opt.min_word_count:
-                word_count.pop(word)
+        for word in word_count:
+            if word_count[word] > opt.min_word_count:
+                vocab[word] = len(vocab)
 
-        print("Length of vocab after removing words less than {} : {}".format(opt.min_word_count, len(word_count)))
+        print(len(vocab))
 
         with open('data/' + DATA_SIZE + '/' + dset_type + '_word_count.json', "w") as f:
             json.dump(word_count, f)
 
+        with open('data/' + DATA_SIZE + '/' + dset_type + '_vocab.json', "w") as f:
+            json.dump(vocab, f)
+
+        with open('data/' + DATA_SIZE + '/' + dset_type + '_labels_map.json', "w") as f:
+            json.dump(labels_map, f)
+
 def get_word_count(dset_type):
     with open('data/' + DATA_SIZE + '/' + dset_type + '_word_count.json', "r") as f:
         return json.load(f)
+
+
+def get_vocab(dset_type='train'):
+    with open('data/' + DATA_SIZE + '/' + dset_type + '_vocab.json', "r") as f:
+        return json.load(f)
+
+
+def get_labels_map(dset_type='train'):
+    with open('data/' + DATA_SIZE + '/' + dset_type + '_labels_map.json', "r") as f:
+        return json.load(f)
+
 
 def add_to_word_count(word_count, tokens):
     for token in tokens:
@@ -213,4 +254,5 @@ def readFile_test(path, dset_type):
 
 if __name__ == "__main__":
     create_vocab(paths[DATA_SIZE], 'train')
-    # write_all_data()
+    # train_data, vocab, label_map = readFile(paths[DATA_SIZE], 'train')
+    # print(train_data[:4])

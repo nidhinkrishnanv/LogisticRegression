@@ -12,11 +12,11 @@ class Options():
 
         
         # Avaiable options : verysmall full
-        self.DATA_SIZE = 'full'
+        self.DATA_SIZE = 'verysmall'
 
         self.lr =1e-3
         # learning rate decay
         self.lr_decay = 2
 
-        self.min_word_count = 5 # Used for removing words with count less than this number.
+        self.min_word_count = 4 # Used for removing words with count less than this number.
         self.DEBUG = False

@@ -1,9 +1,12 @@
 import numpy as np
+from options import Options
+
+opt = Options()
 
 class LogisticReg():
 
     # Intial weights for logistic regression
-    def __init__(self, input_dim, output_dim, lr=0.001, lamda=0.001):
+    def __init__(self, input_dim, output_dim, lr=1e-4, lamda=1e-2):
         self.W = np.zeros((output_dim, input_dim))
         self.b = np.zeros((output_dim, 1))
         self.lr = lr
@@ -12,6 +15,8 @@ class LogisticReg():
 
 
     def forward(self, inputs):
+        # print("W {}".format(self.W.shape))
+        # print("input {}".format(inputs.shape))
         out = np.matmul(self.W, inputs) +self.b
         return self.sigmoid(out)
 
@@ -22,13 +27,13 @@ class LogisticReg():
         self.lr = lr
 
         # Get the output vector containing the probability of each class.
-        inputs = inputs.reshape(inputs.shape[0], 1)
-        labels = labels.reshape(labels.shape[0], 1)
+        # inputs = inputs.reshape(inputs.shape[0], 1)
+        # labels = labels.reshape(labels.shape[0], 1)
         probs = self.forward(inputs)
 
         # get the gradients
-        dW = np.matmul((probs - labels), inputs.T) + self.lamda * self.W
-        db = probs - labels + self.lamda*self.b
+        dW = np.matmul((probs - labels), inputs.T) + self.lamda * self.W * opt.BATCH_SIZE
+        db = np.sum((probs - labels), axis=1, keepdims=True) + self.lamda * self.b * opt.BATCH_SIZE
 
         # Update the weight matrix and b with gradients
         self.W = self.W - self.lr*dW
@@ -44,8 +49,8 @@ class LogisticReg():
 
     def test_step(self, inputs, labels):
         # Get the output vector containing the probability of each class.
-        inputs = inputs.reshape(inputs.shape[0], 1)
-        labels = labels.reshape(labels.shape[0], 1)
+        # inputs = inputs.reshape(inputs.shape[0], 1)
+        # labels = labels.reshape(labels.shape[0], 1)
         probs = self.forward(inputs)
 
         # Get the index with probability greater than one.
@@ -55,10 +60,6 @@ class LogisticReg():
         acc = self.get_exact_acc(preds, labels)
 
         return acc
-
-
-
-       
 
     def get_exact_acc(self, preds, labels):
          # Get exact match
